@@ -68,8 +68,12 @@ export default function AnnotatePage() {
 
         {!loading && batches.length > 0 && (
           <div className="mt-8 space-y-8">
-            {batches.map((batch) => (
-              <BatchAnnotationCard key={batch.id} batch={batch} />
+            {batches.map((batch, index) => (
+              <BatchAnnotationCard
+                key={batch.id}
+                batch={batch}
+                batchNumber={index + 1}
+              />
             ))}
           </div>
         )}

@@ -6,11 +6,15 @@ import type { AnnotationBatch } from "@/types/annotation";
 
 type BatchAnnotationCardProps = {
   batch: AnnotationBatch;
+  batchNumber: number;
 };
 
 type WheelDirection = "next" | "previous";
 
-export function BatchAnnotationCard({ batch }: BatchAnnotationCardProps) {
+export function BatchAnnotationCard({
+  batch,
+  batchNumber,
+}: BatchAnnotationCardProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const wheelLockRef = useRef(false);
@@ -86,7 +90,7 @@ export function BatchAnnotationCard({ batch }: BatchAnnotationCardProps) {
 
         <div className="text-center">
           <h2 className="text-lg font-extrabold text-[#0F172A]">
-            Batch #{batch.id}
+            Batch #{batchNumber}
           </h2>
 
           <p className="mt-1 text-sm font-bold text-[#4F46E5]">
