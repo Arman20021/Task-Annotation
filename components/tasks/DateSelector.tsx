@@ -58,12 +58,7 @@ export function DateSelector({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={goToPreviousDay}
-            className="rounded-2xl border border-white/80 bg-white/70 px-4 py-3 font-semibold text-slate-700 shadow-sm transition hover:bg-white"
-          >
-            Previous
-          </button>
+        
 
           <input
             type="date"
@@ -71,17 +66,23 @@ export function DateSelector({
             onChange={(event) => onDateChange(event.target.value)}
             className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 font-semibold text-slate-700 shadow-sm outline-none transition focus:ring-4 focus:ring-violet-100"
           />
+            <button
+            onClick={goToPreviousDay}
+className="rounded-2xl border border-[#E2E8F0] bg-white px-5 py-3 font-semibold text-[#0F172A] shadow-sm transition-all duration-300 hover:-translate-x-1 hover:scale-[1.03] hover:border-[#C7D2FE] hover:bg-[#EEF2FF] hover:text-[#4F46E5] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:scale-100 disabled:hover:border-[#E2E8F0] disabled:hover:bg-white disabled:hover:text-[#0F172A]" 
+          >
+            Previous
+          </button>
 
           <button
             onClick={() => onDateChange(getTodayDate())}
-            className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 font-semibold text-violet-700 shadow-sm transition hover:bg-violet-100"
+           className="rounded-2xl border border-[#E2E8F0] bg-white px-5 py-3 font-semibold text-[#0F172A] shadow-sm transition-all duration-300 hover:-translate-x-1 hover:scale-[1.03] hover:border-[#C7D2FE] hover:bg-[#EEF2FF] hover:text-[#4F46E5] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:scale-100 disabled:hover:border-[#E2E8F0] disabled:hover:bg-white disabled:hover:text-[#0F172A]"
           >
             Today
           </button>
 
           <button
             onClick={goToNextDay}
-            className="rounded-2xl border border-white/80 bg-white/70 px-4 py-3 font-semibold text-slate-700 shadow-sm transition hover:bg-white"
+           className="rounded-2xl border border-[#E2E8F0] bg-white px-5 py-3 font-semibold text-[#0F172A] shadow-sm transition-all duration-300 hover:-translate-x-1 hover:scale-[1.03] hover:border-[#C7D2FE] hover:bg-[#EEF2FF] hover:text-[#4F46E5] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:scale-100 disabled:hover:border-[#E2E8F0] disabled:hover:bg-white disabled:hover:text-[#0F172A]"
           >
             Next
           </button>

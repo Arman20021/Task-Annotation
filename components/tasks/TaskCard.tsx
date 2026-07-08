@@ -9,6 +9,11 @@ type TaskCardProps = {
   onEdit: (task: Task) => void;
   onDelete: (id: number) => void;
 };
+const cardStatusStyles = {
+  todo: "bg-[#EEF2FF] border-[#C7D2FE]",
+  in_progress: "bg-[#FFFBEB] border-[#FDE68A]",
+  done: "bg-[#ECFDF5] border-[#A7F3D0]",
+};
 
 const priorityStyles = {
   low: "bg-emerald-50 text-emerald-700 border-emerald-100",
@@ -51,8 +56,12 @@ const style = {
       style={style}
       {...attributes}
       {...listeners}
-className={`cursor-pointer select-none touch-none rounded-3xl border border-white/80 bg-white/75 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all duration-200 ${
-  isDragging ? "scale-[1.02] opacity-40" : "hover:-translate-y-1"
+className={`cursor-pointer select-none touch-none rounded-3xl border p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)] transition-all duration-200 ${
+  cardStatusStyles[task.status]
+} ${
+  isDragging
+    ? "scale-[1.02] opacity-40"
+    : "hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)]"
 }`}
     >
       <div className="flex items-start justify-between gap-3">

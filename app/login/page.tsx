@@ -30,6 +30,10 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user");
+
     try {
       const response = await api.post<LoginResponse>("/auth/login/", {
         email,
@@ -77,6 +81,7 @@ export default function LoginPage() {
               Login to manage tasks and annotate images.
             </p>
           </div>
+ 
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>

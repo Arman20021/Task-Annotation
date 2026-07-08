@@ -14,6 +14,7 @@ export type PolygonAnnotation = {
 
 export type AnnotatedImage = {
   id: number;
+  batch: number | null;
   user: string;
   title: string;
   image: string;
@@ -22,6 +23,15 @@ export type AnnotatedImage = {
   height: number | null;
   uploaded_at: string;
   polygons: PolygonAnnotation[];
+};
+
+export type AnnotationBatch = {
+  id: number;
+  user: string;
+  title: string;
+  images: AnnotatedImage[];
+  image_count: number;
+  created_at: string;
 };
 
 export type PolygonPayload = {

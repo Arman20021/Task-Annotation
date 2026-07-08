@@ -1,12 +1,18 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { useState } from "react";
+import type { FormEvent, ChangeEvent } from "react";
+import { useRef, useState } from "react";
 import { useAnnotationStore } from "@/store/annotationStore";
 
 export function ImageUploader() {
   const { uploadImages, uploading } = useAnnotationStore();
   const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    setFiles(selectedFiles);
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -18,31 +24,28 @@ export function ImageUploader() {
     await uploadImages(files);
 
     setFiles([]);
-    event.currentTarget.reset();
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
-    <section className="rounded-[28px] border border-white/80 bg-white/60 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
+    <section className="mx-auto w-full rounded-[30px] border border-[#E2E8F0] bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-[#C7D2FE] hover:bg-[#EEF2FF]/40 hover:shadow-[0_24px_70px_rgba(99,102,241,0.18)] lg:w-1/2">
       <h2 className="text-lg font-bold text-slate-900">Upload Images</h2>
-
-      <p className="mt-1 text-sm text-slate-500">
-        Select multiple MRI, CT, scan, or normal images for annotation.
-      </p>
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-4">
         <input
+          ref={fileInputRef}
           type="file"
           accept="image/*"
           multiple
-          onChange={(event) => {
-            const selectedFiles = Array.from(event.target.files ?? []);
-            setFiles(selectedFiles);
-          }}
-          className="w-full rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-sm text-slate-700 shadow-sm"
+          onChange={handleFileChange}
+          className="w-full cursor-pointer rounded-2xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition-all duration-300 hover:border-[#C7D2FE] hover:bg-[#EEF2FF] hover:text-[#4F46E5] hover:shadow-md"
         />
 
         {files.length > 0 && (
-          <div className="rounded-2xl bg-white/70 p-4 text-sm text-slate-600">
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4 text-sm text-slate-600">
             <p className="font-bold text-slate-900">
               {files.length} image{files.length === 1 ? "" : "s"} selected
             </p>
@@ -60,7 +63,7 @@ export function ImageUploader() {
         <button
           type="submit"
           disabled={files.length === 0 || uploading}
-          className="w-full rounded-2xl theme-button-primary px-4 py-3 font-bold text-white shadow-[0_18px_35px_rgba(99,102,241,0.24)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full cursor-pointer rounded-2xl border border-[#E2E8F0] bg-white px-5 py-3 font-semibold text-[#0F172A] shadow-sm transition-all duration-300 enabled:hover:-translate-y-1 enabled:hover:scale-105 enabled:hover:border-[#C7D2FE] enabled:hover:bg-[#EEF2FF] enabled:hover:text-[#4F46E5] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
           {uploading ? "Uploading..." : "Upload Selected Images"}
         </button>

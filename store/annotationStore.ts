@@ -2,71 +2,83 @@ import { create } from "zustand";
 import { api } from "@/lib/api";
 import type {
   AnnotatedImage,
+  AnnotationBatch,
   PolygonAnnotation,
   PolygonPayload,
 } from "@/types/annotation";
 
 type AnnotationStore = {
-  images: AnnotatedImage[];
+  batches: AnnotationBatch[];
   loading: boolean;
   uploading: boolean;
   error: string;
 
-  fetchImages: () => Promise<void>;
+  fetchBatches: () => Promise<void>;
   uploadImages: (files: File[]) => Promise<void>;
+
   savePolygon: (imageId: number, payload: PolygonPayload) => Promise<void>;
+  updatePolygon: (
+    imageId: number,
+    polygonId: number,
+    points: PolygonAnnotation["points"]
+  ) => Promise<void>;
   deletePolygon: (imageId: number, polygonId: number) => Promise<void>;
 };
 
+function updateImageInBatches(
+  batches: AnnotationBatch[],
+  imageId: number,
+  updater: (image: AnnotatedImage) => AnnotatedImage
+) {
+  return batches.map((batch) => ({
+    ...batch,
+    images: batch.images.map((image) =>
+      image.id === imageId ? updater(image) : image
+    ),
+  }));
+}
+
 export const useAnnotationStore = create<AnnotationStore>((set) => ({
-  images: [],
+  batches: [],
   loading: false,
   uploading: false,
   error: "",
 
-  fetchImages: async () => {
+  fetchBatches: async () => {
     set({ loading: true, error: "" });
 
     try {
-      const response = await api.get<AnnotatedImage[]>("/annotations/images/");
-
-      set({
-        images: response.data,
-        loading: false,
-      });
+      const response = await api.get<AnnotationBatch[]>("/annotations/batches/");
+      set({ batches: response.data, loading: false });
     } catch {
       set({
-        error: "Could not load uploaded images.",
+        error: "Could not load uploaded image batches.",
         loading: false,
       });
     }
   },
 
   uploadImages: async (files) => {
-    if (files.length === 0) {
-      return;
-    }
+    if (files.length === 0) return;
 
     set({ uploading: true, error: "" });
 
     try {
-      const uploadedImages: AnnotatedImage[] = [];
+      const formData = new FormData();
 
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append("image", file);
-        formData.append("title", file.name);
+      files.forEach((file) => {
+        formData.append("images", file);
+      });
 
-        const response = await api.post<AnnotatedImage>(
-          "/annotations/images/",
-          formData
-        );
+      formData.append("title", `Batch with ${files.length} images`);
 
-        uploadedImages.push(response.data);
-      }
+      const response = await api.post<AnnotationBatch>(
+        "/annotations/batches/",
+        formData
+      );
 
       set((state) => ({
-        images: [...uploadedImages.reverse(), ...state.images],
+        batches: [response.data, ...state.batches],
         uploading: false,
       }));
     } catch {
@@ -84,14 +96,26 @@ export const useAnnotationStore = create<AnnotationStore>((set) => ({
     );
 
     set((state) => ({
-      images: state.images.map((image) =>
-        image.id === imageId
-          ? {
-              ...image,
-              polygons: [...image.polygons, response.data],
-            }
-          : image
-      ),
+      batches: updateImageInBatches(state.batches, imageId, (image) => ({
+        ...image,
+        polygons: [...image.polygons, response.data],
+      })),
+    }));
+  },
+
+  updatePolygon: async (imageId, polygonId, points) => {
+    const response = await api.patch<PolygonAnnotation>(
+      `/annotations/polygons/${polygonId}/`,
+      { points }
+    );
+
+    set((state) => ({
+      batches: updateImageInBatches(state.batches, imageId, (image) => ({
+        ...image,
+        polygons: image.polygons.map((polygon) =>
+          polygon.id === polygonId ? response.data : polygon
+        ),
+      })),
     }));
   },
 
@@ -99,16 +123,10 @@ export const useAnnotationStore = create<AnnotationStore>((set) => ({
     await api.delete(`/annotations/polygons/${polygonId}/`);
 
     set((state) => ({
-      images: state.images.map((image) =>
-        image.id === imageId
-          ? {
-              ...image,
-              polygons: image.polygons.filter(
-                (polygon) => polygon.id !== polygonId
-              ),
-            }
-          : image
-      ),
+      batches: updateImageInBatches(state.batches, imageId, (image) => ({
+        ...image,
+        polygons: image.polygons.filter((polygon) => polygon.id !== polygonId),
+      })),
     }));
   },
 }));

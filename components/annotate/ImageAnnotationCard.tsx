@@ -1,14 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import Konva from "konva";
-import {
-  Circle,
-  Image as KonvaImage,
-  Layer,
-  Line,
-  Stage,
-} from "react-konva";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Circle, Image as KonvaImage, Layer, Line, Stage } from "react-konva";
+import type { KonvaEventObject } from "konva/lib/Node";
 import type {
   AnnotatedImage,
   Point,
@@ -18,114 +12,186 @@ import { useAnnotationStore } from "@/store/annotationStore";
 
 type ImageAnnotationCardProps = {
   image: AnnotatedImage;
+  zoom: number;
+  onImageWheel?: (direction: "next" | "previous") => void;
 };
 
-const STAGE_WIDTH = 420;
+type CanvasSize = {
+  width: number;
+  height: number;
+};
 
-export function ImageAnnotationCard({ image }: ImageAnnotationCardProps) {
-  const { savePolygon, deletePolygon } = useAnnotationStore();
+type SelectedPoint =
+  | {
+      type: "current";
+      pointIndex: number;
+    }
+  | {
+      type: "saved";
+      polygonId: number;
+      pointIndex: number;
+    };
 
-  const stageRef = useRef<Konva.Stage | null>(null);
+const MAX_CANVAS_WIDTH = 760;
+const MAX_CANVAS_HEIGHT = 400;
+
+export function ImageAnnotationCard({
+  image,
+  zoom,
+  onImageWheel,
+}: ImageAnnotationCardProps) {
+  const { savePolygon, updatePolygon, deletePolygon } = useAnnotationStore();
+
+  const imageWheelAreaRef = useRef<HTMLDivElement | null>(null);
 
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(
     null
   );
+
+  const [canvasSize, setCanvasSize] = useState<CanvasSize>({
+    width: 700,
+    height: 500,
+  });
+
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [selectedPolygonId, setSelectedPolygonId] = useState<number | null>(
     null
   );
+  const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(
+    null
+  );
+
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    const loadedImage = new window.Image();
-    loadedImage.crossOrigin = "anonymous";
-    loadedImage.src = image.image_url;
+    const wheelArea = imageWheelAreaRef.current;
 
-    loadedImage.onload = () => {
-      setImageElement(loadedImage);
+    if (!wheelArea || !onImageWheel) {
+      return;
+    }
+
+const handleNativeWheel = (event: WheelEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (event.deltaY > 0) {
+    onImageWheel("next");
+  } else {
+    onImageWheel("previous");
+  }
+};
+
+    wheelArea.addEventListener("wheel", handleNativeWheel, {
+      passive: false,
+    });
+
+    return () => {
+      wheelArea.removeEventListener("wheel", handleNativeWheel);
     };
-  }, [image.image_url]);
+}, [onImageWheel]);
 
-  const originalWidth = image.width || imageElement?.width || STAGE_WIDTH;
-  const originalHeight = image.height || imageElement?.height || 320;
+useEffect(() => {
+  setImageElement(null);
+    setSelectedPolygonId(null);
+    setSelectedPoint(null);
+    setSaving(false);
+    setDeleting(false);
 
-  const scale = STAGE_WIDTH / originalWidth;
-  const stageHeight = Math.max(280, Math.round(originalHeight * scale));
+  const img = new window.Image();
 
-  const convertToCanvasPoint = (point: Point): Point => ({
-    x: point.x * scale,
-    y: point.y * scale,
-  });
+  img.crossOrigin = "anonymous";
+  img.src = image.image_url;
 
-  const convertToOriginalPoint = (point: Point): Point => ({
-    x: Math.round(point.x / scale),
-    y: Math.round(point.y / scale),
-  });
+  img.onload = () => {
+    const widthRatio = MAX_CANVAS_WIDTH / img.naturalWidth;
+    const heightRatio = MAX_CANVAS_HEIGHT / img.naturalHeight;
+    const ratio = Math.min(widthRatio, heightRatio, 1);
 
-  const currentCanvasPoints = useMemo(
-    () => currentPoints.map(convertToCanvasPoint),
-    [currentPoints, scale]
-  );
+    setCanvasSize({
+      width: Math.round(img.naturalWidth * ratio),
+      height: Math.round(img.naturalHeight * ratio),
+    });
 
-  const handleStageClick = () => {
+    setImageElement(img);
+  };
+}, [image.id, image.image_url]);
+
+  const currentLinePoints = useMemo(() => {
+    return currentPoints.flatMap((point) => [point.x, point.y]);
+  }, [currentPoints]);
+
+  const displayWidth = canvasSize.width * zoom;
+  const displayHeight = canvasSize.height * zoom;
+
+  const handleStageClick = (event: KonvaEventObject<MouseEvent>) => {
     if (!isDrawing) {
       return;
     }
 
-    const stage = stageRef.current;
+    const clickedClass = event.target.getClassName();
+
+    if (clickedClass === "Circle" || clickedClass === "Line") {
+      return;
+    }
+
+    const stage = event.target.getStage();
 
     if (!stage) {
       return;
     }
 
-    const pointerPosition = stage.getPointerPosition();
+    const pointer = stage.getPointerPosition();
 
-    if (!pointerPosition) {
+    if (!pointer) {
       return;
     }
 
-    const originalPoint = convertToOriginalPoint({
-      x: pointerPosition.x,
-      y: pointerPosition.y,
-    });
+    const newPoint: Point = {
+      x: pointer.x / zoom,
+      y: pointer.y / zoom,
+    };
 
-    setCurrentPoints((previousPoints) => [...previousPoints, originalPoint]);
-  };
-
-  const handleDraw = () => {
+    setCurrentPoints((prev) => [...prev, newPoint]);
+    setSelectedPoint(null);
     setSelectedPolygonId(null);
-    setCurrentPoints([]);
-    setIsDrawing(true);
   };
 
-  const handleFinish = () => {
+  const handleDrawPolygon = () => {
+    setIsDrawing(true);
+    setCurrentPoints([]);
+    setSelectedPolygonId(null);
+    setSelectedPoint(null);
+  };
+
+  const handleFinishPolygon = () => {
     if (currentPoints.length < 3) {
-      alert("A polygon needs at least 3 points.");
+      alert("You need at least 3 points to finish a polygon.");
       return;
     }
 
     setIsDrawing(false);
   };
 
-  const handleSave = async () => {
+  const handleSavePolygon = async () => {
     if (currentPoints.length < 3) {
-      alert("A polygon needs at least 3 points.");
+      alert("You need at least 3 points before saving.");
       return;
     }
 
-    setSaving(true);
-
     try {
+      setSaving(true);
+
       await savePolygon(image.id, {
         label: "Region",
         points: currentPoints,
-        color: "#8b5cf6",
+        color: "#8B5CF6",
       });
 
       setCurrentPoints([]);
       setIsDrawing(false);
+      setSelectedPoint(null);
       setSelectedPolygonId(null);
     } finally {
       setSaving(false);
@@ -133,166 +199,267 @@ export function ImageAnnotationCard({ image }: ImageAnnotationCardProps) {
   };
 
   const handleDeleteSelected = async () => {
-    if (!selectedPolygonId) {
-      alert("Please click a saved polygon first. The selected polygon will turn red.");
+    if (selectedPoint) {
+      await handleDeleteSelectedPoint();
       return;
     }
 
-    setDeleting(true);
+    if (selectedPolygonId) {
+      await handleDeleteSelectedPolygon();
+      return;
+    }
+
+    alert("Select a point or polygon first.");
+  };
+
+  const handleDeleteSelectedPoint = async () => {
+    if (!selectedPoint) {
+      return;
+    }
+
+    if (selectedPoint.type === "current") {
+      setCurrentPoints((prev) =>
+        prev.filter((_, index) => index !== selectedPoint.pointIndex)
+      );
+
+      setSelectedPoint(null);
+      return;
+    }
+
+    const selectedPolygon = image.polygons.find(
+      (polygon) => polygon.id === selectedPoint.polygonId
+    );
+
+    if (!selectedPolygon) {
+      return;
+    }
+
+    if (selectedPolygon.points.length <= 3) {
+      alert("A saved polygon must have at least 3 points.");
+      return;
+    }
+
+    const updatedPoints = selectedPolygon.points.filter(
+      (_, index) => index !== selectedPoint.pointIndex
+    );
 
     try {
+      setDeleting(true);
+      await updatePolygon(image.id, selectedPolygon.id, updatedPoints);
+      setSelectedPoint(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteSelectedPolygon = async () => {
+    if (!selectedPolygonId) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
       await deletePolygon(image.id, selectedPolygonId);
       setSelectedPolygonId(null);
+      setSelectedPoint(null);
     } finally {
       setDeleting(false);
     }
   };
 
   const handleCancel = () => {
-    setCurrentPoints([]);
     setIsDrawing(false);
+    setCurrentPoints([]);
     setSelectedPolygonId(null);
+    setSelectedPoint(null);
   };
 
-  const handleSelectPolygon = (
-    event: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
-    polygonId: number
-  ) => {
-    event.cancelBubble = true;
-    setIsDrawing(false);
-    setCurrentPoints([]);
-    setSelectedPolygonId(polygonId);
-  };
+  const isSaveDisabled = saving || currentPoints.length < 3;
+  const isFinishDisabled = currentPoints.length < 3;
+  const isDeleteDisabled = deleting || (!selectedPoint && !selectedPolygonId);
 
   return (
-    <article className="rounded-[30px] border border-white/80 bg-white/65 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
-      <div className="mb-4">
-        <h2 className="truncate text-lg font-bold text-slate-900">
-          {image.title || `Image ${image.id}`}
-        </h2>
+    <article>
+      <h3 className="mb-4 truncate text-base font-extrabold text-[#0F172A]">
+        {image.title}
+      </h3>
 
-        <p className="mt-1 text-sm text-slate-500">
-          Draw, save, then click a saved polygon to select and delete it.
-        </p>
-      </div>
-
-      <div className="flex justify-center rounded-3xl bg-slate-950/5 p-4">
-        <Stage
-          ref={stageRef}
-          width={STAGE_WIDTH}
-          height={stageHeight}
-          onClick={handleStageClick}
-          className="rounded-2xl bg-white shadow-inner"
+      <div
+        ref={imageWheelAreaRef}
+        className="flex cursor-ew-resize justify-center overflow-hidden rounded-[30px] bg-[#F1F5F9] p-4"
+      >
+        <div
+          style={{
+            width: displayWidth,
+            height: displayHeight,
+          }}
+          className="shrink-0 rounded-2xl bg-black transition-all duration-300"
         >
-          <Layer>
-            {imageElement && (
-              <KonvaImage
-                image={imageElement}
-                width={STAGE_WIDTH}
-                height={stageHeight}
-              />
-            )}
-
-            {image.polygons.map((polygon: PolygonAnnotation) => {
-              const canvasPoints = polygon.points.map(convertToCanvasPoint);
-
-              const flattenedPoints = canvasPoints.flatMap((point) => [
-                point.x,
-                point.y,
-              ]);
-
-              const selected = polygon.id === selectedPolygonId;
-
-              return (
-                <Line
-                  key={polygon.id}
-                  points={flattenedPoints}
-                  closed
-                  stroke={selected ? "#ef4444" : polygon.color}
-                  strokeWidth={selected ? 5 : 3}
-                  hitStrokeWidth={24}
-                  fill={selected ? "rgba(239, 68, 68, 0.22)" : "rgba(139, 92, 246, 0.22)"}
-                  onClick={(event) => handleSelectPolygon(event, polygon.id)}
-                  onTap={(event) => handleSelectPolygon(event, polygon.id)}
-                  onMouseDown={(event) => handleSelectPolygon(event, polygon.id)}
+          <Stage
+            width={displayWidth}
+            height={displayHeight}
+            onClick={handleStageClick}
+          >
+            <Layer scaleX={zoom} scaleY={zoom}>
+              {imageElement && (
+                <KonvaImage
+                  image={imageElement}
+                  width={canvasSize.width}
+                  height={canvasSize.height}
                 />
-              );
-            })}
+              )}
 
-            {currentCanvasPoints.length > 0 && (
-              <Line
-                points={currentCanvasPoints.flatMap((point) => [
+              {image.polygons.map((polygon: PolygonAnnotation) => {
+                const polygonPoints = polygon.points.flatMap((point) => [
                   point.x,
                   point.y,
-                ])}
-                closed={!isDrawing && currentCanvasPoints.length >= 3}
-                stroke="#0ea5e9"
-                strokeWidth={3}
-                fill={!isDrawing ? "rgba(14, 165, 233, 0.22)" : undefined}
-                dash={isDrawing ? [8, 6] : undefined}
-              />
-            )}
+                ]);
 
-            {currentCanvasPoints.map((point, index) => (
-              <Circle
-                key={`${point.x}-${point.y}-${index}`}
-                x={point.x}
-                y={point.y}
-                radius={5}
-                fill="#0ea5e9"
-                stroke="#ffffff"
-                strokeWidth={2}
-              />
-            ))}
-          </Layer>
-        </Stage>
+                const isSelectedPolygon = selectedPolygonId === polygon.id;
+
+                return (
+                  <Fragment key={polygon.id}>
+                    <Line
+                      points={polygonPoints}
+                      closed
+                      stroke={polygon.color || "#8B5CF6"}
+                      strokeWidth={isSelectedPolygon ? 4 : 3}
+                      fill="rgba(139, 92, 246, 0.16)"
+                      hitStrokeWidth={24}
+                      onClick={(event) => {
+                        event.cancelBubble = true;
+                        setSelectedPolygonId(polygon.id);
+                        setSelectedPoint(null);
+                      }}
+                    />
+
+                    {polygon.points.map((point, pointIndex) => {
+                      const isSelectedPoint =
+                        selectedPoint?.type === "saved" &&
+                        selectedPoint.polygonId === polygon.id &&
+                        selectedPoint.pointIndex === pointIndex;
+
+                      return (
+                        <Circle
+                          key={`${polygon.id}-${pointIndex}`}
+                          x={point.x}
+                          y={point.y}
+                          radius={isSelectedPoint ? 7 : 5}
+                          fill={isSelectedPoint ? "#EF4444" : "#FFFFFF"}
+                          stroke={polygon.color || "#8B5CF6"}
+                          strokeWidth={2}
+                          onClick={(event) => {
+                            event.cancelBubble = true;
+
+                            setSelectedPoint({
+                              type: "saved",
+                              polygonId: polygon.id,
+                              pointIndex,
+                            });
+
+                            setSelectedPolygonId(polygon.id);
+                          }}
+                        />
+                      );
+                    })}
+                  </Fragment>
+                );
+              })}
+
+              {currentPoints.length > 0 && (
+                <>
+                  <Line
+                    points={currentLinePoints}
+                    closed={!isDrawing && currentPoints.length >= 3}
+                    stroke="#6366F1"
+                    strokeWidth={3}
+                    fill={
+                      !isDrawing && currentPoints.length >= 3
+                        ? "rgba(99, 102, 241, 0.16)"
+                        : undefined
+                    }
+                    dash={isDrawing ? [8, 6] : undefined}
+                  />
+
+                  {currentPoints.map((point, pointIndex) => {
+                    const isSelectedPoint =
+                      selectedPoint?.type === "current" &&
+                      selectedPoint.pointIndex === pointIndex;
+
+                    return (
+                      <Circle
+                        key={`current-${pointIndex}`}
+                        x={point.x}
+                        y={point.y}
+                        radius={isSelectedPoint ? 7 : 5}
+                        fill={isSelectedPoint ? "#EF4444" : "#FFFFFF"}
+                        stroke="#6366F1"
+                        strokeWidth={2}
+                        onClick={(event) => {
+                          event.cancelBubble = true;
+
+                          setSelectedPoint({
+                            type: "current",
+                            pointIndex,
+                          });
+
+                          setSelectedPolygonId(null);
+                        }}
+                      />
+                    );
+                  })}
+                </>
+              )}
+            </Layer>
+          </Stage>
+        </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-5">
         <button
-          onClick={handleDraw}
-          className="rounded-2xl bg-violet-50 px-4 py-3 text-sm font-bold text-violet-700 transition hover:bg-violet-100"
+          onClick={handleDrawPolygon}
+          className="rounded-2xl bg-[#EEF2FF] px-4 py-3 text-sm font-extrabold text-[#6D28D9] transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:bg-[#DDD6FE] hover:shadow-lg"
         >
           Draw Polygon
         </button>
 
         <button
-          onClick={handleFinish}
-          disabled={currentPoints.length < 3}
-          className="rounded-2xl bg-sky-50 px-4 py-3 text-sm font-bold text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={handleFinishPolygon}
+          disabled={isFinishDisabled}
+          className="rounded-2xl bg-[#F0F9FF] px-4 py-3 text-sm font-extrabold text-[#0284C7] transition-all duration-300 enabled:hover:-translate-y-1 enabled:hover:scale-105 enabled:hover:bg-[#E0F2FE] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
           Finish
         </button>
 
         <button
-          onClick={handleSave}
-          disabled={currentPoints.length < 3 || saving}
-          className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={handleSavePolygon}
+          disabled={isSaveDisabled}
+          className="rounded-2xl bg-[#ECFDF5] px-4 py-3 text-sm font-extrabold text-[#059669] transition-all duration-300 enabled:hover:-translate-y-1 enabled:hover:scale-105 enabled:hover:bg-[#D1FAE5] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
         </button>
 
         <button
           onClick={handleDeleteSelected}
-          disabled={deleting}
-          className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={isDeleteDisabled}
+          className="rounded-2xl bg-[#FEF2F2] px-4 py-3 text-sm font-extrabold text-red-600 transition-all duration-300 enabled:hover:-translate-y-1 enabled:hover:scale-105 enabled:hover:bg-[#FEE2E2] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
           {deleting ? "Deleting..." : "Delete Selected"}
         </button>
 
         <button
           onClick={handleCancel}
-          className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+          className="rounded-2xl bg-[#F1F5F9] px-4 py-3 text-sm font-extrabold text-[#334155] transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:bg-[#E2E8F0] hover:shadow-lg"
         >
           Cancel
         </button>
       </div>
 
-      {selectedPolygonId && (
-        <p className="mt-3 text-sm font-semibold text-red-500">
-          Polygon selected. Now click Delete Selected.
-        </p>
-      )}
+      <div className="mt-4 rounded-2xl bg-[#F8FAFC] px-4 py-3 text-sm font-semibold text-[#64748B]">
+        {isDrawing
+          ? "Click on the image to add polygon points."
+          : "Keep cursor on the image and use mouse wheel to move between images. Outside the image, the page will scroll normally."}
+      </div>
     </article>
   );
 }

@@ -181,3 +181,19 @@ select {
   color: #64748b;
   font-weight: 700;
 }
+
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a,
+.liquid-button,
+.liquid-button-soft,
+.liquid-button-success,
+.liquid-button-danger {
+  cursor: pointer !important;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
+}
