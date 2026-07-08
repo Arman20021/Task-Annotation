@@ -14,10 +14,10 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/70 bg-white/60 backdrop-blur-2xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+    <header className="sticky top-0 z-40 border-b border-[#E2E8F0] bg-white/90 backdrop-blur-xl">
+  <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">
+         <h1 className="text-xl font-bold text-[#0F172A]">
             Task Annotation App
           </h1>
      
@@ -26,21 +26,21 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push("/tasks")}
-            className="rounded-2xl border border-white/80 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-xl transition hover:bg-white"
+           className="theme-button-soft px-4 py-2 text-sm"
           >
             Tasks
           </button>
 
           <button
             onClick={() => router.push("/annotate")}
-            className="rounded-2xl border border-white/80 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-xl transition hover:bg-white"
+           className="theme-button-soft px-4 py-2 text-sm"
           >
             Annotate
           </button>
 
           <button
             onClick={handleLogout}
-            className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
+           className="theme-button-danger px-4 py-2 text-sm"
           >
             Logout
           </button>

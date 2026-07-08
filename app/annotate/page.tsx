@@ -68,10 +68,8 @@ export default function AnnotatePage() {
   }, [pageIndex, totalPages]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#f8fbff] text-slate-900">
-      <div className="absolute left-[-160px] top-[-160px] h-96 w-96 rounded-full bg-sky-200/70 blur-3xl" />
-      <div className="absolute right-[-140px] top-40 h-96 w-96 rounded-full bg-violet-200/70 blur-3xl" />
-      <div className="absolute bottom-[-160px] left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-cyan-100 blur-3xl" />
+    <main className="theme-page">
+     
 
       <div className="relative">
         <Navbar />
@@ -126,7 +124,7 @@ export default function AnnotatePage() {
               <button
                 onClick={goNextPage}
                 disabled={pageIndex >= totalPages - 1}
-                className="rounded-2xl bg-gradient-to-r from-violet-500 to-sky-500 px-4 py-3 text-sm font-bold text-white shadow-[0_18px_35px_rgba(99,102,241,0.22)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-2xl theme-button-primary px-4 py-3 text-sm font-bold text-white shadow-[0_18px_35px_rgba(99,102,241,0.22)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next Page
               </button>

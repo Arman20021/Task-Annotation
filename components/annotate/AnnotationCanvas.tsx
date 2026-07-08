@@ -194,7 +194,7 @@ useEffect(() => {
           <button
             onClick={onNextImage}
             disabled={imagesCount <= 1}
-            className="rounded-2xl bg-gradient-to-r from-violet-500 to-sky-500 px-4 py-3 text-sm font-bold text-white shadow-[0_18px_35px_rgba(99,102,241,0.22)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-2xl theme-button-primary px-4 py-3 text-sm font-bold text-white shadow-[0_18px_35px_rgba(99,102,241,0.22)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Next Image
           </button>

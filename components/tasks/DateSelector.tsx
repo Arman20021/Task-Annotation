@@ -21,10 +21,10 @@ function getTodayDate() {
 }
 
 function getReadableDate(date: string) {
-  return parseLocalDate(date).toLocaleDateString("en-US", {
+  return parseLocalDate(date).toLocaleDateString("en-GB", {
     weekday: "long",
-    month: "long",
     day: "numeric",
+    month: "long",
     year: "numeric",
   });
 }

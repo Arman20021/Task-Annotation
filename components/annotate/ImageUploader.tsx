@@ -60,7 +60,7 @@ export function ImageUploader() {
         <button
           type="submit"
           disabled={files.length === 0 || uploading}
-          className="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-sky-500 px-4 py-3 font-bold text-white shadow-[0_18px_35px_rgba(99,102,241,0.24)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-2xl theme-button-primary px-4 py-3 font-bold text-white shadow-[0_18px_35px_rgba(99,102,241,0.24)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {uploading ? "Uploading..." : "Upload Selected Images"}
         </button>

@@ -31,10 +31,8 @@ export default function TasksPage() {
   }, [selectedDate, fetchTasks, router]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#f8fbff] text-slate-900">
-      <div className="absolute left-[-160px] top-[-160px] h-96 w-96 rounded-full bg-sky-200/70 blur-3xl" />
-      <div className="absolute right-[-140px] top-40 h-96 w-96 rounded-full bg-violet-200/70 blur-3xl" />
-      <div className="absolute bottom-[-160px] left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-cyan-100 blur-3xl" />
+    <main className="theme-page">
+     
 
       <div className="relative">
         <Navbar />

@@ -16,6 +16,14 @@ const priorityStyles = {
   high: "bg-red-50 text-red-700 border-red-100",
 };
 
+function formatDisplayDate(date: string) {
+  return new Date(date).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
   const {
     attributes,
@@ -72,7 +80,7 @@ className={`cursor-pointer select-none touch-none rounded-3xl border border-whit
       <div className="mt-4 text-sm text-slate-500">
         Due:{" "}
         <span className="font-semibold text-slate-700">
-          {task.due_date}
+          {formatDisplayDate(task.due_date)}
         </span>
       </div>
 

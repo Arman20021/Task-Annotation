@@ -235,18 +235,11 @@ export function Board() {
   return (
     <>
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">
-            Daily Kanban Board
-          </h2>
-          <p className="mt-1 text-slate-500">
-            Manage tasks for the selected day.
-          </p>
-        </div>
+ 
 
         <button
           onClick={openCreateModal}
-          className="rounded-2xl bg-gradient-to-r from-violet-500 to-sky-500 px-5 py-3 font-bold text-white shadow-[0_18px_35px_rgba(99,102,241,0.24)] transition hover:scale-[1.01]"
+          className="rounded-2xl bg-violet-600 px-5 py-3 font-bold text-white shadow-[0_18px_35px_rgba(99,102,241,0.24)] transition hover:bg-sky-600 hover:scale-[1.01]"
         >
           Add Task
         </button>
