@@ -32,10 +32,10 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
     },
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
+const style = {
+  transform: CSS.Transform.toString(transform),
+  transition: transition || "transform 220ms ease, opacity 180ms ease",
+};
 
   return (
     <article
@@ -43,9 +43,9 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`rounded-3xl border border-white/80 bg-white/75 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition ${
-        isDragging ? "scale-[1.02] opacity-70" : "hover:-translate-y-1"
-      }`}
+className={`cursor-pointer select-none touch-none rounded-3xl border border-white/80 bg-white/75 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all duration-200 ${
+  isDragging ? "scale-[1.02] opacity-40" : "hover:-translate-y-1"
+}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>

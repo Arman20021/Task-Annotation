@@ -33,8 +33,8 @@ export function Column({
   return (
     <section
       ref={setNodeRef}
-      className={`min-h-[520px] rounded-[30px] border p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition ${
-        isOver
+      className={`min-h-[520px] rounded-[30px] border p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all duration-300 ${
+         isOver
           ? "border-violet-200 bg-violet-50/70"
           : "border-white/80 bg-white/55"
       }`}

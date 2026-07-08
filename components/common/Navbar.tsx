@@ -20,9 +20,7 @@ export function Navbar() {
           <h1 className="text-xl font-bold text-slate-900">
             Task Annotation App
           </h1>
-          <p className="text-sm text-slate-500">
-            Kanban workflow and image annotation workspace
-          </p>
+     
         </div>
 
         <div className="flex items-center gap-3">

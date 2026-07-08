@@ -3,19 +3,23 @@
 import {
   closestCorners,
   DndContext,
+  DragOverlay,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { Task, TaskStatus } from "@/types/task";
 import { TASK_COLUMNS } from "@/types/task";
 import { useTaskStore } from "@/store/taskStore";
 import { Column } from "./Column";
 import { TaskModal } from "./TaskModal";
+
+const STATUSES: TaskStatus[] = ["todo", "in_progress", "done"];
 
 function groupTasks(tasks: Task[]) {
   return {
@@ -35,6 +39,33 @@ function isTaskStatus(value: unknown): value is TaskStatus {
   return value === "todo" || value === "in_progress" || value === "done";
 }
 
+function FloatingTaskCard({ task }: { task: Task }) {
+  return (
+    <article className="rounded-3xl border border-violet-200 bg-white/95 p-5 shadow-[0_28px_70px_rgba(124,58,237,0.25)] backdrop-blur-2xl">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">{task.title}</h3>
+
+          {task.description && (
+            <p className="mt-2 line-clamp-2 text-sm text-slate-500">
+              {task.description}
+            </p>
+          )}
+        </div>
+
+        <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-bold capitalize text-amber-700">
+          {task.priority}
+        </span>
+      </div>
+
+      <div className="mt-4 text-sm text-slate-500">
+        Due:{" "}
+        <span className="font-semibold text-slate-700">{task.due_date}</span>
+      </div>
+    </article>
+  );
+}
+
 export function Board() {
   const {
     tasks,
@@ -45,6 +76,8 @@ export function Board() {
     deleteTask,
   } = useTaskStore();
 
+  const previousTasksRef = useRef<Task[]>([]);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
@@ -78,7 +111,19 @@ export function Board() {
     await deleteTask(id);
   };
 
-  const persistOrders = async (changedTasks: Task[]) => {
+  const persistChangedTasks = async (latestTasks: Task[]) => {
+    const previousTasks = previousTasksRef.current;
+
+    const changedTasks = latestTasks.filter((latestTask) => {
+      const oldTask = previousTasks.find((task) => task.id === latestTask.id);
+
+      return (
+        oldTask &&
+        (oldTask.status !== latestTask.status ||
+          oldTask.order !== latestTask.order)
+      );
+    });
+
     await Promise.all(
       changedTasks.map((task) =>
         api.patch(`/tasks/${task.id}/move/`, {
@@ -89,7 +134,18 @@ export function Board() {
     );
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragStart = (event: DragStartEvent) => {
+    const taskId = Number(event.active.id);
+    const task = tasks.find((item) => item.id === taskId);
+
+    previousTasksRef.current = tasks;
+
+    if (task) {
+      setActiveTask(task);
+    }
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
 
     if (!over) {
@@ -97,19 +153,19 @@ export function Board() {
     }
 
     const activeId = Number(active.id);
-    const activeTask = tasks.find((task) => task.id === activeId);
+    const activeTaskFromState = tasks.find((task) => task.id === activeId);
 
-    if (!activeTask) {
+    if (!activeTaskFromState) {
       return;
     }
 
-    const overType = over.data.current?.type;
-    const overTask = tasks.find((task) => task.id === Number(over.id));
+    const overId = over.id;
+    const overTask = tasks.find((task) => task.id === Number(overId));
 
     let targetStatus: TaskStatus | null = null;
 
-    if (overType === "column" && isTaskStatus(over.id)) {
-      targetStatus = over.id;
+    if (isTaskStatus(overId)) {
+      targetStatus = overId;
     }
 
     if (overTask) {
@@ -120,114 +176,59 @@ export function Board() {
       return;
     }
 
-    const previousTasks = tasks;
-    const sourceStatus = activeTask.status;
-
-    const grouped = groupTasks(tasks);
-
-    if (sourceStatus === targetStatus) {
-      const columnTasks = grouped[sourceStatus];
-
-      const oldIndex = columnTasks.findIndex((task) => task.id === activeId);
-      const newIndex = overTask
-        ? columnTasks.findIndex((task) => task.id === overTask.id)
-        : columnTasks.length - 1;
-
-      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
-        return;
-      }
-
-      const reorderedColumnTasks = arrayMove(columnTasks, oldIndex, newIndex).map(
-        (task, index) => ({
-          ...task,
-          order: index,
-        })
-      );
-
-      const reorderedIds = new Set(reorderedColumnTasks.map((task) => task.id));
-
-      const updatedTasks = tasks.map((task) => {
-        const updatedTask = reorderedColumnTasks.find(
-          (item) => item.id === task.id
-        );
-
-        return updatedTask ?? task;
-      });
-
-      const changedTasks = updatedTasks.filter(
-        (task) =>
-          reorderedIds.has(task.id) &&
-          task.order !== previousTasks.find((item) => item.id === task.id)?.order
-      );
-
-      setTasks(updatedTasks);
-
-      try {
-        await persistOrders(changedTasks);
-      } catch {
-        setTasks(previousTasks);
-      }
-
+    if (overTask?.id === activeTaskFromState.id) {
       return;
     }
 
-    const sourceColumnTasks = grouped[sourceStatus].filter(
-      (task) => task.id !== activeId
-    );
+    const tasksWithoutActive = tasks.filter((task) => task.id !== activeId);
+    const grouped = groupTasks(tasksWithoutActive);
 
-    const targetColumnTasks = grouped[targetStatus].filter(
-      (task) => task.id !== activeId
-    );
+    const targetColumnTasks = [...grouped[targetStatus]];
 
-    const targetIndex = overTask
-      ? targetColumnTasks.findIndex((task) => task.id === overTask.id)
-      : targetColumnTasks.length;
+    let targetIndex = targetColumnTasks.length;
+
+    if (overTask) {
+      const overTaskIndex = targetColumnTasks.findIndex(
+        (task) => task.id === overTask.id
+      );
+
+      if (overTaskIndex >= 0) {
+        targetIndex = overTaskIndex;
+      }
+    }
 
     const movedTask: Task = {
-      ...activeTask,
+      ...activeTaskFromState,
       status: targetStatus,
     };
 
     targetColumnTasks.splice(targetIndex, 0, movedTask);
 
-    const updatedSourceColumn = sourceColumnTasks.map((task, index) => ({
-      ...task,
-      order: index,
-    }));
-
-    const updatedTargetColumn = targetColumnTasks.map((task, index) => ({
-      ...task,
-      order: index,
-    }));
-
-    const updatedColumns = {
+    const nextGrouped = {
       ...grouped,
-      [sourceStatus]: updatedSourceColumn,
-      [targetStatus]: updatedTargetColumn,
+      [targetStatus]: targetColumnTasks,
     };
 
-    const updatedTasks = [
-      ...updatedColumns.todo,
-      ...updatedColumns.in_progress,
-      ...updatedColumns.done,
-    ];
+    const nextTasks = STATUSES.flatMap((status) =>
+      nextGrouped[status].map((task, index) => ({
+        ...task,
+        status,
+        order: index,
+      }))
+    );
 
-    const changedTasks = updatedTasks.filter((updatedTask) => {
-      const oldTask = previousTasks.find((task) => task.id === updatedTask.id);
+    setTasks(nextTasks);
+  };
 
-      return (
-        oldTask &&
-        (oldTask.status !== updatedTask.status ||
-          oldTask.order !== updatedTask.order)
-      );
-    });
+  const handleDragEnd = async (_event: DragEndEvent) => {
+    const latestTasks = useTaskStore.getState().tasks;
 
-    setTasks(updatedTasks);
+    setActiveTask(null);
 
     try {
-      await persistOrders(changedTasks);
+      await persistChangedTasks(latestTasks);
     } catch {
-      setTasks(previousTasks);
+      setTasks(previousTasksRef.current);
     }
   };
 
@@ -254,6 +255,8 @@ export function Board() {
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
         <div className="grid gap-5 lg:grid-cols-3">
@@ -269,6 +272,15 @@ export function Board() {
             />
           ))}
         </div>
+
+        <DragOverlay
+          dropAnimation={{
+            duration: 260,
+            easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+          }}
+        >
+          {activeTask ? <FloatingTaskCard task={activeTask} /> : null}
+        </DragOverlay>
       </DndContext>
 
       <TaskModal
