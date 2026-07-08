@@ -28,16 +28,7 @@ export default function AnnotatePage() {
       <Navbar />
 
       <section className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-[#0F172A]">
-            Image Annotation
-          </h1>
 
-          <p className="mt-2 max-w-2xl text-sm text-[#64748B]">
-            Upload multiple images together. Each upload becomes one separate
-            image group.
-          </p>
-        </div>
 
         <ImageUploader />
 
@@ -68,13 +59,13 @@ export default function AnnotatePage() {
 
         {!loading && batches.length > 0 && (
           <div className="mt-8 space-y-8">
-            {batches.map((batch, index) => (
-              <BatchAnnotationCard
-                key={batch.id}
-                batch={batch}
-                batchNumber={index + 1}
-              />
-            ))}
+              {batches.map((batch, index) => (
+                <BatchAnnotationCard
+                  key={batch.id}
+                  batch={batch}
+                  batchNumber={batches.length - index}
+                />
+              ))}
           </div>
         )}
       </section>

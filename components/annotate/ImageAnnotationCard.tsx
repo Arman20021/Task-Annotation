@@ -284,10 +284,10 @@ useEffect(() => {
         {image.title}
       </h3>
 
-      <div
-        ref={imageWheelAreaRef}
-        className="flex cursor-ew-resize justify-center overflow-hidden rounded-[30px] bg-[#F1F5F9] p-4"
-      >
+        <div
+          ref={imageWheelAreaRef}
+          className="flex cursor-default justify-center overflow-hidden rounded-[30px] bg-[#F1F5F9] p-4"
+        >
         <div
           style={{
             width: displayWidth,
