@@ -20,8 +20,8 @@ type LoginResponse = {
 export default function LoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("demo@example.com");
-  const [password, setPassword] = useState("demo12345");
+  const [email, setEmail] = useState("arman@gmail.com");
+  const [password, setPassword] = useState("Arm@n123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -69,9 +69,7 @@ export default function LoginPage() {
 
         <div className="relative">
           <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-white/80 bg-white/70 text-3xl font-bold text-violet-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_40px_rgba(124,58,237,0.18)] backdrop-blur-xl">
-              A
-            </div>
+ 
 
             <h1 className="text-3xl font-bold text-slate-900">
               Welcome Back
@@ -129,11 +127,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 rounded-2xl border border-white/80 bg-white/60 p-4 text-sm text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_30px_rgba(15,23,42,0.05)] backdrop-blur-xl">
-            <p className="font-semibold text-slate-900">Demo Account</p>
-            <p>Email: demo@example.com</p>
-            <p>Password: demo12345</p>
-          </div>
+ 
         </div>
       </section>
     </main>

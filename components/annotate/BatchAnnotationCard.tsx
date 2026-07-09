@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ImageAnnotationCard } from "./ImageAnnotationCard";
-import type { AnnotationBatch } from "@/types/annotation";
+import type { AnnotationBatch, Point } from "@/types/annotation";
 
 type BatchAnnotationCardProps = {
   batch: AnnotationBatch;
@@ -11,15 +11,38 @@ type BatchAnnotationCardProps = {
 
 type WheelDirection = "next" | "previous";
 
+type DraftsByImageId = Record<number, Point[]>;
+
 export function BatchAnnotationCard({
   batch,
   batchNumber,
 }: BatchAnnotationCardProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [draftsByImageId, setDraftsByImageId] = useState<DraftsByImageId>({});
+
   const wheelLockRef = useRef(false);
 
   const activeImage = batch.images[activeIndex];
+
+  const activeDraftPoints = activeImage
+    ? draftsByImageId[activeImage.id] ?? []
+    : [];
+
+  const updateDraftPoints = (imageId: number, points: Point[]) => {
+    setDraftsByImageId((previousDrafts) => ({
+      ...previousDrafts,
+      [imageId]: points,
+    }));
+  };
+
+  const clearDraftPoints = (imageId: number) => {
+    setDraftsByImageId((previousDrafts) => {
+      const updatedDrafts = { ...previousDrafts };
+      delete updatedDrafts[imageId];
+      return updatedDrafts;
+    });
+  };
 
   const goPrevious = () => {
     setActiveIndex((prev) => Math.max(prev - 1, 0));
@@ -39,21 +62,9 @@ export function BatchAnnotationCard({
     wheelLockRef.current = true;
 
     if (direction === "next") {
-      setActiveIndex((prev) => {
-        const nextIndex = Math.min(prev + 1, batch.images.length - 1);
-        if (nextIndex !== prev) {
-          setZoom(1);
-        }
-        return nextIndex;
-      });
+      goNext();
     } else {
-      setActiveIndex((prev) => {
-        const previousIndex = Math.max(prev - 1, 0);
-        if (previousIndex !== prev) {
-          setZoom(1);
-        }
-        return previousIndex;
-      });
+      goPrevious();
     }
 
     window.setTimeout(() => {
@@ -78,12 +89,12 @@ export function BatchAnnotationCard({
   }
 
   return (
-   <section className="mx-auto max-w-3xl rounded-[30px] border border-[#E2E8F0] bg-white p-4 shadow-[0_16px_45px_rgba(15,23,42,0.07)] transition-all duration-300 hover:border-[#C7D2FE] hover:shadow-[0_20px_55px_rgba(99,102,241,0.14)]">
-      <div className="mb-5 flex items-center justify-between gap-4">
+<section className="mx-auto max-w-3xl rounded-[26px] border border-[#E2E8F0] bg-white p-3 shadow-[0_12px_35px_rgba(15,23,42,0.06)] transition-all duration-300 hover:border-[#C7D2FE] hover:shadow-[0_16px_45px_rgba(99,102,241,0.12)]">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <button
           onClick={goPrevious}
           disabled={activeIndex === 0}
-          className="rounded-2xl border border-[#E2E8F0] bg-white px-5 py-3 font-semibold text-[#0F172A] shadow-sm transition-all duration-300 enabled:hover:-translate-x-1 enabled:hover:scale-105 enabled:hover:border-[#C7D2FE] enabled:hover:bg-[#EEF2FF] enabled:hover:text-[#4F46E5] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-2 font-semibold text-[#0F172A] shadow-sm transition-all duration-300 enabled:hover:-translate-x-1 enabled:hover:scale-105 enabled:hover:border-[#C7D2FE] enabled:hover:bg-[#EEF2FF] enabled:hover:text-[#4F46E5] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
           ← Previous
         </button>
@@ -97,24 +108,22 @@ export function BatchAnnotationCard({
             Image {activeIndex + 1} / {batch.images.length}
           </p>
 
-          <p className="mt-1 text-xs font-semibold text-[#64748B]">
-            Wheel only works when cursor is on the image
-          </p>
+ 
         </div>
 
         <button
           onClick={goNext}
           disabled={activeIndex === batch.images.length - 1}
-          className="rounded-2xl bg-[#6366F1] px-5 py-3 font-semibold text-white shadow-sm transition-all duration-300 enabled:hover:translate-x-1 enabled:hover:scale-105 enabled:hover:bg-[#4F46E5] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-2xl bg-[#6366F1] px-4 py-2 font-semibold text-white shadow-sm transition-all duration-300 enabled:hover:translate-x-1 enabled:hover:scale-105 enabled:hover:bg-[#4F46E5] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
           Next →
         </button>
       </div>
 
-      <div className="mb-5 flex flex-wrap items-center justify-center gap-3">
+      <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
         <button
           onClick={zoomOut}
-          className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-bold text-[#0F172A] transition-all duration-300 hover:border-[#C7D2FE] hover:bg-[#EEF2FF] hover:text-[#4F46E5] hover:shadow-md"
+          className="rounded-2xl border border-[#E2E8F0] bg-white px-3 py-1.5 text-sm font-bold text-[#0F172A] transition-all duration-300 hover:border-[#C7D2FE] hover:bg-[#EEF2FF] hover:text-[#4F46E5] hover:shadow-md"
         >
           Zoom -
         </button>
@@ -138,11 +147,16 @@ export function BatchAnnotationCard({
         </button>
       </div>
 
-            <ImageAnnotationCard
-            image={activeImage}
-            zoom={zoom}
-            onImageWheel={handleImageWheel}
-            />
+      <ImageAnnotationCard
+        image={activeImage}
+        zoom={zoom}
+        draftPoints={activeDraftPoints}
+        onDraftPointsChange={(points) =>
+          updateDraftPoints(activeImage.id, points)
+        }
+        onDraftClear={() => clearDraftPoints(activeImage.id)}
+        onImageWheel={handleImageWheel}
+      />
     </section>
   );
 }

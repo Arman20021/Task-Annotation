@@ -4,11 +4,7 @@ export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
 });
 
-const publicRoutes = [
-  "/auth/login/",
-  "/auth/register/",
-  "/auth/refresh/",
-];
+const publicRoutes = ["/auth/login/", "/auth/register/", "/auth/refresh/"];
 
 api.interceptors.request.use((config) => {
   if (typeof window === "undefined") {
@@ -39,8 +35,13 @@ api.interceptors.response.use(
   (error) => {
     if (typeof window !== "undefined") {
       const status = error.response?.status;
+      const requestUrl = error.config?.url || "";
 
-      if (status === 401) {
+      const isPublicRoute = publicRoutes.some((route) =>
+        requestUrl.includes(route)
+      );
+
+      if (status === 401 && !isPublicRoute) {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("user");

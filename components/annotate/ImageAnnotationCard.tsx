@@ -13,6 +13,9 @@ import { useAnnotationStore } from "@/store/annotationStore";
 type ImageAnnotationCardProps = {
   image: AnnotatedImage;
   zoom: number;
+  draftPoints: Point[];
+  onDraftPointsChange: (points: Point[]) => void;
+  onDraftClear: () => void;
   onImageWheel?: (direction: "next" | "previous") => void;
 };
 
@@ -32,12 +35,15 @@ type SelectedPoint =
       pointIndex: number;
     };
 
-const MAX_CANVAS_WIDTH = 760;
+const MAX_CANVAS_WIDTH = 500;
 const MAX_CANVAS_HEIGHT = 400;
 
 export function ImageAnnotationCard({
   image,
   zoom,
+  draftPoints,
+  onDraftPointsChange,
+  onDraftClear,
   onImageWheel,
 }: ImageAnnotationCardProps) {
   const { savePolygon, updatePolygon, deletePolygon } = useAnnotationStore();
@@ -49,12 +55,11 @@ export function ImageAnnotationCard({
   );
 
   const [canvasSize, setCanvasSize] = useState<CanvasSize>({
-    width: 700,
-    height: 500,
+    width: 300,
+    height: 300,
   });
 
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [selectedPolygonId, setSelectedPolygonId] = useState<number | null>(
     null
   );
@@ -65,6 +70,8 @@ export function ImageAnnotationCard({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const currentPoints = draftPoints;
+
   useEffect(() => {
     const wheelArea = imageWheelAreaRef.current;
 
@@ -72,16 +79,16 @@ export function ImageAnnotationCard({
       return;
     }
 
-const handleNativeWheel = (event: WheelEvent) => {
-  event.preventDefault();
-  event.stopPropagation();
+    const handleNativeWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
 
-  if (event.deltaY > 0) {
-    onImageWheel("next");
-  } else {
-    onImageWheel("previous");
-  }
-};
+      if (event.deltaY > 0) {
+        onImageWheel("next");
+      } else {
+        onImageWheel("previous");
+      }
+    };
 
     wheelArea.addEventListener("wheel", handleNativeWheel, {
       passive: false,
@@ -90,33 +97,43 @@ const handleNativeWheel = (event: WheelEvent) => {
     return () => {
       wheelArea.removeEventListener("wheel", handleNativeWheel);
     };
-}, [onImageWheel]);
+  }, [onImageWheel]);
 
-useEffect(() => {
-  setImageElement(null);
+  useEffect(() => {
+    let cancelled = false;
+
+    setImageElement(null);
     setSelectedPolygonId(null);
     setSelectedPoint(null);
     setSaving(false);
     setDeleting(false);
 
-  const img = new window.Image();
+    const img = new window.Image();
 
-  img.crossOrigin = "anonymous";
-  img.src = image.image_url;
+    img.crossOrigin = "anonymous";
+    img.src = image.image_url;
 
-  img.onload = () => {
-    const widthRatio = MAX_CANVAS_WIDTH / img.naturalWidth;
-    const heightRatio = MAX_CANVAS_HEIGHT / img.naturalHeight;
-    const ratio = Math.min(widthRatio, heightRatio, 1);
+    img.onload = () => {
+      if (cancelled) {
+        return;
+      }
 
-    setCanvasSize({
-      width: Math.round(img.naturalWidth * ratio),
-      height: Math.round(img.naturalHeight * ratio),
-    });
+      const widthRatio = MAX_CANVAS_WIDTH / img.naturalWidth;
+      const heightRatio = MAX_CANVAS_HEIGHT / img.naturalHeight;
+      const ratio = Math.min(widthRatio, heightRatio, 1);
 
-    setImageElement(img);
-  };
-}, [image.id, image.image_url]);
+      setCanvasSize({
+        width: Math.round(img.naturalWidth * ratio),
+        height: Math.round(img.naturalHeight * ratio),
+      });
+
+      setImageElement(img);
+    };
+
+    return () => {
+      cancelled = true;
+    };
+  }, [image.id, image.image_url]);
 
   const currentLinePoints = useMemo(() => {
     return currentPoints.flatMap((point) => [point.x, point.y]);
@@ -153,14 +170,14 @@ useEffect(() => {
       y: pointer.y / zoom,
     };
 
-    setCurrentPoints((prev) => [...prev, newPoint]);
+    onDraftPointsChange([...currentPoints, newPoint]);
     setSelectedPoint(null);
     setSelectedPolygonId(null);
   };
 
   const handleDrawPolygon = () => {
     setIsDrawing(true);
-    setCurrentPoints([]);
+    onDraftClear();
     setSelectedPolygonId(null);
     setSelectedPoint(null);
   };
@@ -189,7 +206,7 @@ useEffect(() => {
         color: "#8B5CF6",
       });
 
-      setCurrentPoints([]);
+      onDraftClear();
       setIsDrawing(false);
       setSelectedPoint(null);
       setSelectedPolygonId(null);
@@ -218,8 +235,8 @@ useEffect(() => {
     }
 
     if (selectedPoint.type === "current") {
-      setCurrentPoints((prev) =>
-        prev.filter((_, index) => index !== selectedPoint.pointIndex)
+      onDraftPointsChange(
+        currentPoints.filter((_, index) => index !== selectedPoint.pointIndex)
       );
 
       setSelectedPoint(null);
@@ -269,7 +286,7 @@ useEffect(() => {
 
   const handleCancel = () => {
     setIsDrawing(false);
-    setCurrentPoints([]);
+    onDraftClear();
     setSelectedPolygonId(null);
     setSelectedPoint(null);
   };
@@ -284,16 +301,16 @@ useEffect(() => {
         {image.title}
       </h3>
 
-        <div
-          ref={imageWheelAreaRef}
-          className="flex cursor-default justify-center overflow-hidden rounded-[30px] bg-[#F1F5F9] p-4"
-        >
+      <div
+        ref={imageWheelAreaRef}
+        className="flex cursor-default justify-center overflow-hidden rounded-[22px] bg-[#F8FAFC] p-2"
+      >
         <div
           style={{
             width: displayWidth,
             height: displayHeight,
           }}
-          className="shrink-0 rounded-2xl bg-black transition-all duration-300"
+          className="shrink-0 rounded-2xl bg-[#F8FAFC]"
         >
           <Stage
             width={displayWidth}
@@ -415,10 +432,10 @@ useEffect(() => {
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-5">
+     <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-5">
         <button
           onClick={handleDrawPolygon}
-          className="rounded-2xl bg-[#EEF2FF] px-4 py-3 text-sm font-extrabold text-[#6D28D9] transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:bg-[#DDD6FE] hover:shadow-lg"
+          className="rounded-2xl bg-[#EEF2FF] px-2 py-1 text-sm font-extrabold text-[#6D28D9] transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:bg-[#DDD6FE] hover:shadow-lg"
         >
           Draw Polygon
         </button>
@@ -426,7 +443,7 @@ useEffect(() => {
         <button
           onClick={handleFinishPolygon}
           disabled={isFinishDisabled}
-          className="rounded-2xl bg-[#F0F9FF] px-4 py-3 text-sm font-extrabold text-[#0284C7] transition-all duration-300 enabled:hover:-translate-y-1 enabled:hover:scale-105 enabled:hover:bg-[#E0F2FE] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-2xl bg-[#F0F9FF] px-2 py-1 text-sm font-extrabold text-[#0284C7] transition-all duration-300 enabled:hover:-translate-y-1 enabled:hover:scale-105 enabled:hover:bg-[#E0F2FE] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
           Finish
         </button>
@@ -434,7 +451,7 @@ useEffect(() => {
         <button
           onClick={handleSavePolygon}
           disabled={isSaveDisabled}
-          className="rounded-2xl bg-[#ECFDF5] px-4 py-3 text-sm font-extrabold text-[#059669] transition-all duration-300 enabled:hover:-translate-y-1 enabled:hover:scale-105 enabled:hover:bg-[#D1FAE5] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-2xl bg-[#ECFDF5] px-3 py-2 text-sm font-extrabold text-[#059669] transition-all duration-300 enabled:hover:-translate-y-1 enabled:hover:scale-105 enabled:hover:bg-[#D1FAE5] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
         </button>
@@ -442,24 +459,24 @@ useEffect(() => {
         <button
           onClick={handleDeleteSelected}
           disabled={isDeleteDisabled}
-          className="rounded-2xl bg-[#FEF2F2] px-4 py-3 text-sm font-extrabold text-red-600 transition-all duration-300 enabled:hover:-translate-y-1 enabled:hover:scale-105 enabled:hover:bg-[#FEE2E2] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-2xl bg-[#FEF2F2] px-3 py-2 text-sm font-extrabold text-red-600 transition-all duration-300 enabled:hover:-translate-y-1 enabled:hover:scale-105 enabled:hover:bg-[#FEE2E2] enabled:hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
           {deleting ? "Deleting..." : "Delete Selected"}
         </button>
 
         <button
           onClick={handleCancel}
-          className="rounded-2xl bg-[#F1F5F9] px-4 py-3 text-sm font-extrabold text-[#334155] transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:bg-[#E2E8F0] hover:shadow-lg"
+          className="rounded-2xl bg-[#F1F5F9] px-3 py-2 text-sm font-extrabold text-[#334155] transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:bg-[#E2E8F0] hover:shadow-lg"
         >
           Cancel
         </button>
       </div>
 
-      <div className="mt-4 rounded-2xl bg-[#F8FAFC] px-4 py-3 text-sm font-semibold text-[#64748B]">
+      {/* <div className="mt-4 rounded-2xl bg-[#F8FAFC] px-4 py-3 text-sm font-semibold text-[#64748B]">
         {isDrawing
-          ? "Click on the image to add polygon points."
-          : "Keep cursor on the image and use mouse wheel to move between images. Outside the image, the page will scroll normally."}
-      </div>
+          ? "Click on this image to add points. You can scroll to another image; this draft will stay only on this image."
+          : "Use mouse wheel on the image to move between images. Draft polygons stay per image."}
+      </div> */}
     </article>
   );
 }
