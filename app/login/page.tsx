@@ -11,9 +11,10 @@ type LoginResponse = {
   refresh: string;
   user: {
     id: number;
+    username?: string;
     email: string;
-    first_name: string;
-    last_name: string;
+    first_name?: string;
+    last_name?: string;
   };
 };
 
@@ -21,24 +22,32 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("arman@gmail.com");
-  const [password, setPassword] = useState("Arm@n123");
+  const [password, setPassword] = useState("arman12345");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     setError("");
     setLoading(true);
 
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("user");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
 
     try {
       const response = await api.post<LoginResponse>("/auth/login/", {
-        email,
+        email: email.trim().toLowerCase(),
         password,
       });
+
+      console.log("Login success:", response.data);
+
+      if (!response.data.access || !response.data.refresh) {
+        setError("Login response does not contain access or refresh token.");
+        return;
+      }
 
       localStorage.setItem("accessToken", response.data.access);
       localStorage.setItem("refreshToken", response.data.refresh);
@@ -47,14 +56,47 @@ export default function LoginPage() {
       router.push("/tasks");
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        const backendMessage =
-          error.response?.data?.detail ||
-          "Login failed. Please check your backend connection.";
+        console.log("Login error status:", error.response?.status);
+        console.log("Login error data:", error.response?.data);
+        console.log("Login error message:", error.message);
 
-        setError(backendMessage);
-      } else {
-        setError("Something went wrong. Please try again.");
+        if (!error.response) {
+          setError("Frontend cannot reach backend. Check Vercel API URL.");
+          return;
+        }
+
+        if (error.response.status === 400) {
+          setError(
+            JSON.stringify(error.response.data) ||
+              "Bad request. Check email and password field names."
+          );
+          return;
+        }
+
+        if (error.response.status === 401) {
+          setError("Invalid email or password.");
+          return;
+        }
+
+        if (error.response.status === 403) {
+          setError("This user account is disabled.");
+          return;
+        }
+
+        if (error.response.status === 500) {
+          setError("Backend server error. Check PythonAnywhere error log.");
+          return;
+        }
+
+        setError(
+          error.response.data?.detail ||
+            `Login failed. Server status: ${error.response.status}`
+        );
+
+        return;
       }
+
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -62,15 +104,11 @@ export default function LoginPage() {
 
   return (
     <main className="theme-page flex items-center justify-center px-4">
-     
-
       <section className="relative w-full max-w-md rounded-[32px] border border-white/70 bg-white/55 p-8 shadow-[0_30px_80px_rgba(15,23,42,0.12)] backdrop-blur-2xl">
         <div className="absolute inset-0 rounded-[32px] bg-gradient-to-br from-white/90 via-white/50 to-white/20" />
 
         <div className="relative">
           <div className="mb-8 text-center">
- 
-
             <h1 className="text-3xl font-bold text-slate-900">
               Welcome Back
             </h1>
@@ -79,7 +117,6 @@ export default function LoginPage() {
               Login to manage tasks and annotate images.
             </p>
           </div>
- 
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
@@ -91,7 +128,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="demo@example.com"
+                placeholder="arman@gmail.com"
                 required
                 className="w-full rounded-2xl border border-white/80 bg-white/70 px-4 py-3 font-medium text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_30px_rgba(15,23,42,0.06)] outline-none transition placeholder:text-slate-400 focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
               />
@@ -106,7 +143,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="demo12345"
+                placeholder="arman12345"
                 required
                 className="w-full rounded-2xl border border-white/80 bg-white/70 px-4 py-3 font-medium text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_30px_rgba(15,23,42,0.06)] outline-none transition placeholder:text-slate-400 focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100"
               />
@@ -126,8 +163,6 @@ export default function LoginPage() {
               {loading ? "Logging in..." : "Login"}
             </button>
           </form>
-
- 
         </div>
       </section>
     </main>
