@@ -32,19 +32,64 @@ const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
   setError("");
   setLoading(true);
 
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user");
+
   try {
     const response = await api.post<LoginResponse>("/auth/login/", {
-      email,
+      email: email.trim().toLowerCase(),
       password,
     });
 
-    localStorage.setItem("accessToken", response.data.access);
-    localStorage.setItem("refreshToken", response.data.refresh);
-    localStorage.setItem("user", JSON.stringify(response.data.user));
+    const { access, refresh, user } = response.data;
 
-    router.replace("/dashboard");
+    if (!access || !refresh) {
+      setError("Login response does not contain access or refresh token.");
+      return;
+    }
+
+    localStorage.setItem("accessToken", access);
+    localStorage.setItem("refreshToken", refresh);
+    localStorage.setItem("user", JSON.stringify(user));
+
+    router.replace("/tasks");
   } catch (error) {
-    setError("Invalid email or password.");
+    if (axios.isAxiosError(error)) {
+      if (!error.response) {
+        setError("Frontend cannot reach backend. Check Vercel API URL.");
+        return;
+      }
+
+      if (error.response.status === 400) {
+        setError("Bad request. Check email and password.");
+        return;
+      }
+
+      if (error.response.status === 401) {
+        setError("Invalid email or password.");
+        return;
+      }
+
+      if (error.response.status === 403) {
+        setError("This user account is disabled.");
+        return;
+      }
+
+      if (error.response.status === 500) {
+        setError("Backend server error. Check PythonAnywhere error log.");
+        return;
+      }
+
+      setError(
+        error.response.data?.detail ||
+          `Login failed. Server status: ${error.response.status}`
+      );
+
+      return;
+    }
+
+    setError("Something went wrong. Please try again.");
   } finally {
     setLoading(false);
   }
