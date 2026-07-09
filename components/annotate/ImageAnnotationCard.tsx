@@ -110,7 +110,7 @@ export function ImageAnnotationCard({
 
     const img = new window.Image();
 
-    img.crossOrigin = "anonymous";
+    // img.crossOrigin = "anonymous";
     img.src = image.image_url;
 
     img.onload = () => {
