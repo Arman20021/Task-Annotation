@@ -26,81 +26,29 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
 
-    setError("");
-    setLoading(true);
+  setError("");
+  setLoading(true);
 
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
+  try {
+    const response = await api.post<LoginResponse>("/auth/login/", {
+      email,
+      password,
+    });
 
-    try {
-      const response = await api.post<LoginResponse>("/auth/login/", {
-        email: email.trim().toLowerCase(),
-        password,
-      });
+    localStorage.setItem("accessToken", response.data.access);
+    localStorage.setItem("refreshToken", response.data.refresh);
+    localStorage.setItem("user", JSON.stringify(response.data.user));
 
-      console.log("Login success:", response.data);
-
-      if (!response.data.access || !response.data.refresh) {
-        setError("Login response does not contain access or refresh token.");
-        return;
-      }
-
-      localStorage.setItem("accessToken", response.data.access);
-      localStorage.setItem("refreshToken", response.data.refresh);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-
-      router.push("/tasks");
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.log("Login error status:", error.response?.status);
-        console.log("Login error data:", error.response?.data);
-        console.log("Login error message:", error.message);
-
-        if (!error.response) {
-          setError("Frontend cannot reach backend. Check Vercel API URL.");
-          return;
-        }
-
-        if (error.response.status === 400) {
-          setError(
-            JSON.stringify(error.response.data) ||
-              "Bad request. Check email and password field names."
-          );
-          return;
-        }
-
-        if (error.response.status === 401) {
-          setError("Invalid email or password.");
-          return;
-        }
-
-        if (error.response.status === 403) {
-          setError("This user account is disabled.");
-          return;
-        }
-
-        if (error.response.status === 500) {
-          setError("Backend server error. Check PythonAnywhere error log.");
-          return;
-        }
-
-        setError(
-          error.response.data?.detail ||
-            `Login failed. Server status: ${error.response.status}`
-        );
-
-        return;
-      }
-
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    router.replace("/dashboard");
+  } catch (error) {
+    setError("Invalid email or password.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <main className="theme-page flex items-center justify-center px-4">
